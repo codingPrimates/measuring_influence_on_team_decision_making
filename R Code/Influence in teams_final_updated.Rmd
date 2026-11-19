@@ -1,0 +1,106 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-26"
+---
+
+```{r}
+
+library(dplyr)
+library(apaTables)
+library(glmmTMB)
+library(DHARMa)
+library(lme4)
+library(data.table)
+
+```
+
+```{r}
+
+#Read in influence data and team member characteristics
+
+infl <- fread("***add filepath to Team_influence_data***")
+
+char <- fread("***add filepath to Team_member_characteristics_updated***")
+
+infl_dat <- merge(infl, char, by = c("Unit", "ResponseId"))
+
+infl_dat
+
+```
+
+
+Correlation Table
+
+
+```{r}
+
+corr_tab <- dplyr::select(infl_dat, -Unit, -ResponseId)
+
+apa.cor.table(corr_tab)
+
+```
+
+```{r}
+
+#scale all predictor variables
+
+infl_dat_scaled <-  mutate(infl_dat, Expertise_scaled = as.numeric(scale(Expertise)), Similarity_to_Mean_scaled = as.numeric(scale(Similarity_to_Mean)), SpeakingTime_scaled = as.numeric(scale(SpeakingTime)), WorkContributions_scaled = as.numeric(scale(WorkContributions)), Dominance_scaled = as.numeric(scale(Dominance))) 
+
+```
+
+
+```{r}
+
+#Visualize histogram of normailized difference data
+
+hist(infl_dat$Norm_diff, breaks = 20)
+
+```
+
+
+```{r}
+
+head(infl_dat_scaled)
+nrow(infl_dat_scaled)
+
+d <- glmmTMB(Norm_diff ~ Expertise_scaled + SpeakingTime_scaled + Dominance_scaled + Expertise_scaled:SpeakingTime_scaled + SpeakingTime_scaled:Dominance_scaled + WorkContributions_scaled + Similarity_to_Mean_scaled + (1|Unit), data = infl_dat_scaled, beta_family(link = "logit"))  #use this one
+
+check_model0 <- simulateResiduals(fittedModel = d)
+
+hist(residuals(check_model0))
+
+testUniformity(check_model0)  #KS test   
+
+testOutliers(check_model0)
+testDispersion(check_model0)  #Dispersion test
+testQuantiles(check_model0)
+
+
+summary(d)
+
+
+```
+```{r}
+
+
+d2 <- glmmTMB(Norm_diff ~ Expertise_scaled + SpeakingTime_scaled + Dominance_scaled + WorkContributions_scaled + Similarity_to_Mean_scaled + (1|Unit), data = infl_dat_scaled, beta_family(link = "logit"))  #use this one
+
+
+check_model0 <- simulateResiduals(fittedModel = d2)
+
+hist(residuals(check_model0))
+
+testUniformity(check_model0)  #KS test   
+
+testOutliers(check_model0)
+testDispersion(check_model0)  #Dispersion test
+testQuantiles(check_model0)
+
+
+summary(d2)
+
+
+```
+
+

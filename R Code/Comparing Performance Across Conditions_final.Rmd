@@ -1,0 +1,191 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-06-30"
+---
+
+Read in Packages
+
+```{r}
+
+library(dplyr)
+library(coin)
+library(rstatix)
+
+```
+
+Read in and Process Performance Data
+
+```{r}
+
+#Read in performance data
+
+perf <- fread(**Add file path for Performance_data.txt**)
+
+perf
+
+#Pull out team brainstorming idea performance data and calculate worst, median, and best
+
+teams <- filter(perf, Trial.Type == "Team", Phase == "Brainstorming Phase")
+
+
+worst <- group_by(teams, Unit) %>%
+  summarize(Score = min(Score)) %>%
+  mutate(Type = "Worst")
+
+med <- group_by(teams, Unit) %>%
+  summarize(Score = median(Score)) %>%
+  mutate(Type = "Median")
+
+best <- group_by(teams, Unit) %>%
+  summarize(Score = max(Score)) %>%
+  mutate(Type = "Best")
+
+
+all_ideas <- rbind(worst, med, best)
+
+all_ideas
+
+
+```
+
+Produce Graphs
+
+```{r}
+
+
+n_fun <- function(x){
+  return(data.frame(y = 16.5, label = length(x)))
+}
+
+
+
+a <- ggplot(perf, aes(x = Trial.Type, y = Score, fill = Phase)) +
+  geom_boxplot(size = .3, outlier.size = .5) +
+  ylab("Performance") +
+  xlab("Condition\n ") +
+  #scale_fill_grey(start = .4, end = .9) +
+  theme_light() +
+  guides(fill = guide_legend(title = "Phase")) +
+  ylim(0,16.5) +
+  theme(text = element_text(size = 8), legend.key.size = unit(.3, 'cm'), legend.text = element_text(size = 8), legend.title = element_text(size=8), legend.box.spacing = margin(0.5), axis.text=element_text(size=8), axis.title=element_text(size=8)) +
+  stat_summary(fun.data = n_fun, geom = "text", aes(group = Phase), position=position_dodge(width=0.75), size = 2) +
+  scale_fill_grey(start = .4, end = .9, name = "Phase", labels = c("Brainstorming", "Design"))
+
+a
+
+
+
+all_ideas$Type <- factor(all_ideas$Type, levels = c("Worst", "Median", "Best"))
+
+
+b <- ggplot(all_ideas, aes(x = Type, y = Score)) +
+  geom_boxplot(size = .3, outlier.size = .5, show.legend = FALSE) +
+  ylab("Performance") +
+  xlab("Relative Brainstorming Track \n Performance per Team") +
+  scale_color_grey(start = 0, end = .4) +
+  theme_light() +
+  ylim(0,16.5)  +
+  theme(text = element_text(size = 8), axis.text=element_text(size=8), axis.title=element_text(size=8)) +  
+  #legend.key.size = unit(.3, 'cm'), legend.text = element_text(size = 5), legend.title = element_text(size=7), legend.box.spacing = margin(0.5)) +
+  stat_summary(fun.data = n_fun, geom = "text", position=position_dodge(width=0.75), show.legend = FALSE, size = 2) 
+
+b
+
+
+cowplot::plot_grid(a, b, labels = c("a)", "b)"), rel_widths = c(.6, .4), nrow = 1, ncol = 2, label_size = 7)
+
+
+```
+
+
+Calculate Statistics
+
+```{r }
+
+head(perf)
+
+hist(perf$Score)
+
+#Compare Brainstorming Phase track performance across individuals and teams
+
+team_brain <- filter(perf, Trial.Type == "Team", Phase == "Brainstorming Phase")
+indi_brain <- filter(perf, Trial.Type == "Individual", Phase == "Brainstorming Phase")
+
+wilcox.test(team_brain$Score, indi_brain$Score)
+
+rbind(team_brain, indi_brain) %>% wilcox_effsize(Score ~ Trial.Type)
+
+```
+
+
+```{r }
+
+#Compare Design Phase track performance across individuals and teams
+
+team_design <- filter(perf, Trial.Type == "Team", Phase == "Design Phase")
+indi_design <- filter(perf, Trial.Type == "Individual", Phase == "Design Phase")
+
+wilcox.test(team_design$Score, indi_design$Score)
+
+rbind(team_design, indi_design) %>% wilcox_effsize(Score ~ Trial.Type)
+
+```
+
+
+
+
+```{r }
+
+
+#Compare team score in Design Phase to worst brainstorming track performance
+
+team_design_rename <- dplyr::rename(team_design, Team_Score = Score) %>%
+  dplyr::select(-Phase, -Trial.Type, -ResponseID)
+
+worst_rename <- dplyr::rename(worst, Worst_Score = Score) %>%
+  dplyr::select(-Type)
+
+team_worst <- data.frame(merge(team_design_rename, worst_rename, by = c("Unit")))
+
+wilcox.test(team_worst$Team_Score, team_worst$Worst_Score, paired = TRUE)
+
+rbind(data.frame(Type = "Team", Score = team_worst$Team_Score), data.frame(Type = "Worst", Score = team_worst$Worst_Score)) %>% wilcox_effsize(Score ~ Type, paired = TRUE)
+
+```
+
+
+```{r }
+
+#Compare team score in Design Phase to median brainstorming track performance
+
+med_rename <- dplyr::rename(med, Median_Score = Score) %>%
+  dplyr::select(-Type)
+
+team_med <- merge(team_design_rename, med_rename, by = c("Unit"))
+
+wilcox.test(team_med$Team_Score, team_med$Median_Score, paired = TRUE)
+
+rbind(data.frame(Type = "Team", Score = team_med$Team_Score), data.frame(Type = "Worst", Score = team_med$Median_Score)) %>% wilcox_effsize(Score ~ Type, paired = TRUE)
+
+```
+
+
+```{r }
+
+#Compare team score in Design Phase to best brainstorming track performance
+
+best_rename <- dplyr::rename(best, Best_Score = Score) %>%
+  dplyr::select(-Type)
+
+team_best <- merge(team_design_rename, best_rename, by = c("Unit"))
+
+wilcox.test(team_best$Team_Score, team_best$Best_Score, paired = TRUE)
+
+rbind(data.frame(Type = "Team", Score = team_best$Team_Score), data.frame(Type = "Worst", Score = team_best$Best_Score)) %>% wilcox_effsize(Score ~ Type, paired = TRUE)
+
+```
+
+
+
+

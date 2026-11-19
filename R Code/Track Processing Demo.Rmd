@@ -1,0 +1,337 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-05-20"
+---
+
+
+```{r}
+
+library(jsonlite)
+library(dplyr)
+library(ggplot2)
+library(rgeos)
+library(data.table)
+
+```
+
+
+Code for extracting track data
+
+```{r}
+
+
+fn <- function(l) {
+  as.data.frame(l)
+}
+
+#read in background course
+
+background_course <- read_json(**Add filepath for background_course.json**)
+
+#read in track file
+
+track1_dat <- read_json(**Add filepath for Unit_124_R_24C3n0g2sO3kdS2_brainstorming_track.json**)
+
+background_course_bind <- bind_rows(lapply(background_course$lines, fn))
+
+track1_bind <- bind_rows(lapply(track1_dat$lines, fn))
+
+#Subtract background course from track file
+
+track1 <- anti_join(track1_bind, background_course_bind)
+
+#plot the track
+
+ggplot(track1) +
+  geom_segment(aes(x = x1, y = -y1, xend = x2, yend = -y2)) +
+  coord_equal()
+
+track1
+
+
+#Get all the y coordinates for the track for the x-coordinates that span from 0 to 2000 (boundaries of course). the .json files save line data as line segments with endpoints x1y1 and x2y2. The following code calculates the value of y for x values that fall in between these end points by calculating where y would fall on the straight line between the two points
+
+track1_process <- lapply(seq(0, 2000, by = 1), function(g) {
+
+apply(track1, 1, function(h){  #for each row in the dataset...
+           
+         if(g >= as.numeric(as.character(h[3])) && g <= as.numeric(as.character(h[5]))) {  #do the following for g values that fall between x1 and x2 in that row
+           
+           data.frame(x = g, start = h[4], end = as.numeric(as.character(h[6])), y = -1 * (as.numeric(as.character(h[4])) - (   ( (as.numeric(as.character(h[3])) - g) * (as.numeric(as.character(h[4])) - as.numeric(as.character(h[6]))  )) /  (as.numeric(as.character(h[3]))  -  as.numeric(as.character(h[5]))  ))))
+           
+         }  
+  
+
+         }) %>% bind_rows()  
+  
+})  %>% bind_rows() 
+
+
+track1_process
+
+#Calculate the median y value for every x value (thick or irregular lines may have some values of x that have more than one y value close to one another)
+
+track1_med <- group_by(track1_process, x) %>%
+    summarize(y = median(y)) 
+
+track1_med
+
+#Plot the updated track
+
+ggplot(track1_med) +
+  geom_line(aes(x = x, y = y)) +
+  coord_equal() 
+
+
+```
+
+```{r}
+
+#read in track file
+
+track2_dat <- read_json(**For filepath for Unit_124_R_3HHdu3VVXMNkn2i_brainstorming_track**)
+
+background_course_bind <- bind_rows(lapply(background_course$lines, fn))
+
+track2_bind <- bind_rows(lapply(track2_dat$lines, fn))
+
+#Subtract background course from track file
+
+track2 <- anti_join(track2_bind, background_course_bind)
+
+#plot the track
+
+ggplot(track2) +
+  geom_segment(aes(x = x1, y = -y1, xend = x2, yend = -y2)) +
+  coord_equal()
+
+
+#Get all the y coordinates for the track for the x-coordinates that span from 0 to 2000 (boundaries of course). the .json files save line data as line segments with endpoints x1y1 and x2y2. The following code calculates the value of y for x values that fall in between these end points by calculating where y would fall on the straight line between the two points
+
+track2_process <- lapply(seq(0, 2000, by = 1), function(g) {
+
+apply(track2, 1, function(h){  #for each row in the dataset...
+           
+         if(g >= as.numeric(as.character(h[3])) && g <= as.numeric(as.character(h[5]))) {  #do the following for g values that fall between x1 and x2 in that row
+           
+           data.frame(x = g, start = h[4], end = as.numeric(as.character(h[6])), y = -1 * (as.numeric(as.character(h[4])) - (   ( (as.numeric(as.character(h[3])) - g) * (as.numeric(as.character(h[4])) - as.numeric(as.character(h[6]))  )) /  (as.numeric(as.character(h[3]))  -  as.numeric(as.character(h[5]))  ))))
+           
+         }  
+  
+
+         }) %>% bind_rows()  
+  
+})  %>% bind_rows() 
+
+
+
+track2_process
+
+#Calculate the median y value for every x value (thick or irregular lines may have some values of x that have more than one y value close to one another)
+
+track2_med <- group_by(track2_process, x) %>%
+    summarize(y = median(y)) 
+
+track2_med
+
+#Plot the updated track
+
+ggplot(track2_med) +
+  geom_line(aes(x = x, y = y)) +
+  coord_equal() 
+```
+
+```{r}
+
+#read in track file
+
+track3_dat <- read_json(**Add filepath for Unit_124_R_1GP6IKXl0PYyt4s_brainstorming_track.json**)
+
+background_course_bind <- bind_rows(lapply(background_course$lines, fn))
+
+track3_bind <- bind_rows(lapply(track3_dat$lines, fn))
+
+#Subtract background course from track file
+
+track3 <- anti_join(track3_bind, background_course_bind)
+
+#plot the track
+
+ggplot(track3) +
+  geom_segment(aes(x = x1, y = -y1, xend = x2, yend = -y2)) +
+  coord_equal()
+
+track3
+
+
+#Get all the y coordinates for the track for the x-coordinates that span from 0 to 2000 (boundaries of course). the .json files save line data as line segments with endpoints x1y1 and x2y2. The following code calculates the value of y for x values that fall in between these end points by calculating where y would fall on the straight line between the two points
+
+track3_process <- lapply(seq(0, 2000, by = 1), function(g) {
+
+apply(track3, 1, function(h){  #for each row in the dataset...
+           
+         if(g >= as.numeric(as.character(h[3])) && g <= as.numeric(as.character(h[5]))) {  #do the following for g values that fall between x1 and x2 in that row
+           
+           data.frame(x = g, start = h[4], end = as.numeric(as.character(h[6])), y = -1 * (as.numeric(as.character(h[4])) - (   ( (as.numeric(as.character(h[3])) - g) * (as.numeric(as.character(h[4])) - as.numeric(as.character(h[6]))  )) /  (as.numeric(as.character(h[3]))  -  as.numeric(as.character(h[5]))  ))))
+           
+         }  
+  
+
+         }) %>% bind_rows()  
+  
+})  %>% bind_rows() 
+
+
+
+track3_process
+
+#Calculate the median y value for every x value (thick or irregular lines may have some values of x that have more than one y value close to one another)
+
+track3_med <- group_by(track3_process, x) %>%
+    summarize(y = median(y)) 
+
+track3_med
+
+#Plot the updated track
+
+ggplot(track3_med) +
+  geom_line(aes(x = x, y = y)) +
+  coord_equal() 
+
+```
+
+```{r}
+
+#read in track file
+
+team_track_dat <- read_json(**Add filepath for Unit_124_group_track.json**)
+
+background_course_bind <- bind_rows(lapply(background_course$lines, fn))
+
+team_track_bind <- bind_rows(lapply(team_track_dat$lines, fn))
+
+#Subtract background course from track file
+
+team_track <- anti_join(team_track_bind, background_course_bind)
+
+#plot the track
+
+ggplot(team_track) +
+  geom_segment(aes(x = x1, y = -y1, xend = x2, yend = -y2)) +
+  coord_equal()
+
+
+#Get all the y coordinates for the track for the x-coordinates that span from 0 to 2000 (boundaries of course). the .json files save line data as line segments with endpoints x1y1 and x2y2. The following code calculates the value of y for x values that fall in between these end points by calculating where y would fall on the straight line between the two points
+
+
+team_track_process <- lapply(seq(0, 2000, by = 1), function(g) {
+
+apply(team_track, 1, function(h){  #for each row in the dataset...
+           
+         if(g >= as.numeric(as.character(h[3])) && g <= as.numeric(as.character(h[5]))) {  #do the following for g values that fall between x1 and x2 in that row
+           
+           data.frame(x = g, start = h[4], end = as.numeric(as.character(h[6])), y = -1 * (as.numeric(as.character(h[4])) - (   ( (as.numeric(as.character(h[3])) - g) * (as.numeric(as.character(h[4])) - as.numeric(as.character(h[6]))  )) /  (as.numeric(as.character(h[3]))  -  as.numeric(as.character(h[5]))  ))))
+           
+         }  
+  
+
+         }) %>% bind_rows()  
+  
+})  %>% bind_rows() 
+
+
+team_track_process
+
+#Calculate the median y value for every x value (thick or irregular lines may have some values of x that have more than one y value close to one another)
+
+team_track_med <- group_by(team_track_process, x) %>%
+    summarize(y = median(y)) 
+
+team_track_med
+
+#Plot the updated track
+
+ggplot(team_track_med) +
+  geom_line(aes(x = x, y = y)) +
+  coord_equal() 
+
+```
+
+```{r}
+
+
+all_tracks <- rbind(mutate(track1_med, Response_ID = "R_24C3n0g2sO3kdS2"), mutate(track2_med, Response_ID = "R_3HHdu3VVXMNkn2i"), mutate(track3_med, Response_ID = "R_1GP6IKXl0PYyt4s"), mutate(team_track_med, Response_ID = "TeamTrack"))
+
+ggplot(all_tracks) +
+  geom_line(aes(x = x, y = y, color = Response_ID)) +
+  coord_equal()
+
+
+```
+
+
+
+```{r}
+
+
+brainstorming_tracks <- rbind(mutate(track1_med, Response_ID = "R_24C3n0g2sO3kdS2"), mutate(track2_med, Response_ID = "R_3HHdu3VVXMNkn2i"), mutate(track3_med, Response_ID = "R_1GP6IKXl0PYyt4s"))
+
+line0 <- sp::SpatialLines(list(sp::Lines(sp::Line(cbind(team_track_med$x, team_track_med$y)), ID = 'a')))
+ 
+
+
+
+norm_dists <- lapply(unique(brainstorming_tracks$Response_ID), function(n) {
+   
+b <- filter(brainstorming_tracks, Response_ID == n)
+   
+line01 <- sp::SpatialLines(list(sp::Lines(sp::Line(cbind(b$x, b$y)), ID = 'a')))
+   
+line_pts <- methods::as(line0, "SpatialPoints")
+comparison_pts <- methods::as(line01, "SpatialPoints")
+
+line_coords <- sp::coordinates(line_pts)
+comparison_coords <- sp::coordinates(comparison_pts)
+
+start <- line_coords[1, ]
+end <- line_coords[base::nrow(line_coords), ]
+
+coords <- base::rbind(line_coords, comparison_coords[nrow(comparison_coords):1,])
+
+p = sp::Polygon(coords)
+ps = sp::Polygons(list(p), 1)
+sps = sp::SpatialPolygons(list(ps))
+
+line_pts <- methods::as(line0, "SpatialPoints")
+comparison_pts <- methods::as(line01, "SpatialPoints")
+
+line_coords <- sp::coordinates(line_pts)
+comparison_coords <- sp::coordinates(comparison_pts)
+
+start <- line_coords[1, ]
+end <- line_coords[base::nrow(line_coords), ]
+
+coords <- base::rbind(line_coords, comparison_coords[nrow(comparison_coords):1,])
+
+p = sp::Polygon(coords)
+ps = sp::Polygons(list(p), 1)
+sps = sp::SpatialPolygons(list(ps))
+
+plot(line0)
+plot(line01, add = T, col = "red")
+plot(sps, col  ="black") 
+
+rgeos::gArea(sps)
+
+spp2 = gPolygonize(gNode(gBoundary(sps)))
+
+data.frame(Response_ID = n, norm_dist = gArea(spp2) /  1526304) #1526304 is the maximum possible area between tracks in our course
+
+}) %>% bind_rows()
+
+norm_dists
+
+```
+
+

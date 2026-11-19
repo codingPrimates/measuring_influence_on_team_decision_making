@@ -1,0 +1,185 @@
+---
+title: "Untitled"
+output: html_document
+date: "2023-03-17"
+---
+
+```{r }
+
+library(dplyr)
+library(data.table)
+library(pscl)
+library(datawizard)
+library(DHARMa)
+
+```
+
+
+```{r }
+
+#Read in influence data and team member characteristics
+
+infl <- fread("***Add filepath for Team_influence_data***")
+
+char <- fread("***Add filepath for Team_member_characteristics_updated***")
+
+infl_dat <- merge(infl, char, by = c("Unit", "ResponseId")) %>%
+  mutate(Unit = as.character(Unit)) 
+
+infl_dat
+
+
+#group mean center predictor variables
+
+infl_dat_center <- ungroup(infl_dat) %>%
+  mutate(Expertise_scaled = as.numeric(scale(Expertise)), Similarity_to_Mean_scaled = as.numeric(scale(Similarity_to_Mean)), SpeakingTime_scaled = as.numeric(scale(SpeakingTime)), WorkContributions_scaled = as.numeric(scale(WorkContributions)), Dominance_scaled = as.numeric(scale(Dominance))) %>%
+  group_by(Unit) %>%
+  mutate(Expertise_scaled_center = as.numeric(center(Expertise_scaled)), Similarity_to_Mean_scaled_center = as.numeric(center(Similarity_to_Mean_scaled)), SpeakingTime_scaled_center = as.numeric(center(SpeakingTime_scaled)), WorkContributions_scaled_center = as.numeric(center(WorkContributions_scaled)), Dominance_scaled_center = as.numeric(center(Dominance_scaled))) %>%
+  ungroup() 
+
+infl_dat_center
+
+
+#select most influential team member
+
+infl_dat_center_most <- group_by(infl_dat_center, Unit) %>%
+  summarize(Norm_diff = min(Norm_diff)) %>%   #select group member with lowest normalized distance to team track
+  merge(., infl_dat_center, by = c("Unit", "Norm_diff")) #merge data back with full dataset to pull in the most influential individual's characteristics
+
+infl_dat_center_most
+
+```
+
+```{r }
+
+
+#Read in team performance data in design phase and round to nearest integer
+
+perf_dat <- fread("***Add filepath for Performance_data***") 
+
+team_perf <- filter(perf_dat, Trial.Type == "Team", Phase == "Design Phase") 
+
+team_perf_round <- mutate(team_perf, Score_round = round(Score)) %>%
+  dplyr::select(Unit, Score, Score_round)
+
+team_perf
+
+infl_perf <- merge(infl_dat_center_most, team_perf_round, by = c("Unit"))
+
+
+```
+
+
+```{r }
+
+#Visualize histogram of team performance data 
+
+hist(infl_perf$Score, breaks = 20)
+
+hist(infl_perf$Score_round, breaks = 20)
+
+```
+
+```{r }
+
+head(infl_perf)
+
+
+c <- zeroinfl(Score_round ~ Expertise_scaled + SpeakingTime_scaled + Dominance_scaled + Expertise_scaled:SpeakingTime_scaled + SpeakingTime_scaled:Dominance_scaled + WorkContributions_scaled + Similarity_to_Mean_scaled | 1, data = infl_perf)
+
+summary(c)
+
+```
+
+
+
+```{r }
+
+head(infl_perf)
+
+
+c2 <- zeroinfl(Score_round ~ Expertise_scaled + SpeakingTime_scaled + Dominance_scaled + WorkContributions_scaled + Similarity_to_Mean_scaled | 1, data = infl_perf)
+
+summary(c2)
+
+```
+
+
+
+```{r }
+
+
+#Calculate team performance relative to median brainstorming performance
+
+head(perf_dat)
+
+med <- filter(perf_dat, Trial.Type == "Team", Phase == "Brainstorming Phase") %>% 
+  group_by(Unit) %>%
+  summarize(med_Score = median(Score)) %>%
+  ungroup() 
+
+perf_dif <- dplyr::select(team_perf, Unit, Score) %>%
+merge(., med, by = c("Unit")) %>%
+mutate(Perf_dif = Score - med_Score) %>%
+  dplyr::select(Unit, Perf_dif)
+
+perf_dif
+
+
+```
+
+
+```{r }
+
+
+infl_perf_dif <- merge(infl_dat_center_most, perf_dif, by = c("Unit"))
+
+
+#Visualize histogram of performance difference data (Team Performance - median individual brainstorming performance)
+
+hist(infl_perf_dif$Perf_dif)
+
+
+```
+
+
+```{r }
+
+e <- lm(Perf_dif ~ Expertise_scaled_center + SpeakingTime_scaled_center + Dominance_scaled_center + Expertise_scaled_center:SpeakingTime_scaled_center + SpeakingTime_scaled_center:Dominance_scaled_center + WorkContributions_scaled_center + Similarity_to_Mean_scaled_center, data = infl_perf_dif)
+
+check_model0 <- simulateResiduals(fittedModel = e)
+
+hist(residuals(check_model0))
+
+testUniformity(check_model0)  #KS test   
+
+testOutliers(check_model0)
+testDispersion(check_model0)  #Dispersion test
+testQuantiles(check_model0)
+
+summary(e)
+
+nrow(infl_perf_dif)
+
+```
+
+```{r }
+
+e2 <- lm(Perf_dif ~ Expertise_scaled_center + SpeakingTime_scaled_center + Dominance_scaled_center + WorkContributions_scaled_center + Similarity_to_Mean_scaled_center, data = infl_perf_dif)
+
+check_model0 <- simulateResiduals(fittedModel = e2)
+
+hist(residuals(check_model0))
+
+testUniformity(check_model0)  #KS test   
+
+testOutliers(check_model0)
+testDispersion(check_model0)  #Dispersion test
+testQuantiles(check_model0)
+
+summary(e2)
+
+```
+
+
+

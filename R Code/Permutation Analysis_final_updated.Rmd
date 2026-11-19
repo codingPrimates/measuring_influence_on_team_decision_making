@@ -1,0 +1,343 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-04-30"
+---
+
+
+```{r}
+
+
+library(tidyr)
+library(ggplot2)
+library(rstatix)
+
+```
+
+Read in Team Influence Data
+
+```{r}
+
+infl_team <- fread(**Add filepath for Team_influence_data.txt**) %>%
+  dplyr::select(Unit, Norm_diff)
+
+infl_team_sort <- dplyr::arrange(infl_team, Unit, desc(Norm_diff)) %>%
+  group_by(Unit) %>%
+  mutate(id = c("a","b","c")) %>%
+ungroup() 
+
+
+infl_team_sort_wide <- spread(infl_team_sort, id, Norm_diff) %>%
+  dplyr::rename(Least = a, Intermediate = b, Most = c)
+
+summary(infl_team_sort_wide$Most)
+
+summarize(infl_team_sort_wide, obs_median_least = median(Least), obs_median_int = median(Intermediate), obs_median_most = median(Most))
+
+summarize(infl_team_sort_wide, obs_IQR_least = summary(Least)[2], obs_IQR_int = summary(Intermediate)[2], obs_IQR_most = summary(Most)[2])
+
+summarize(infl_team_sort_wide, obs_IQR_least = summary(Least)[5], obs_IQR_int = summary(Intermediate)[5], obs_IQR_most = summary(Most)[5])
+
+```
+
+```{r}
+
+most <- ggplot(infl_team_sort_wide, aes(x = Most)) +
+  geom_histogram(color = "black", fill = "white") +
+  xlim(0, .6) +
+  xlab("Normalized Difference") +
+  ggtitle("Most Influential\n Team Member") +
+  theme(axis.text=element_text(size=6), axis.title=element_text(size=7), plot.title = element_text(size=8)) 
+  
+most
+
+
+ggplot(infl_team_sort_wide, aes(x = Most)) +
+  geom_histogram(color = "black", fill = "white") +
+  xlim(0, .6) +
+  xlab("Normalized Difference") +
+  ggtitle("Most Influential Team Member") 
+  
+```
+
+
+```{r}
+
+int <- ggplot(infl_team_sort_wide, aes(x = Intermediate)) +
+  geom_histogram(color = "black", fill = "white") +
+  xlim(0, .6) +
+  xlab("Normalized Difference") +
+  ggtitle("Team Member of\n Intermediate Influence") +
+  theme(axis.text=element_text(size=6), axis.title=element_text(size=7), plot.title = element_text(size=8)) 
+
+```
+
+
+```{r}
+
+least <- ggplot(infl_team_sort_wide, aes(x = Least)) +
+  geom_histogram(color = "black", fill = "white") +
+  xlim(0, .6) +
+  xlab("Normalized Difference") +
+  ggtitle("Least Influential\n Team Member") +
+  theme(axis.text=element_text(size=6), axis.title=element_text(size=7), plot.title = element_text(size=8)) 
+
+
+```
+
+
+Read in Individual Influence Data
+
+```{r}
+
+infl_indi <- fread(**Add filepath for Individual_influence_data.txt**) %>%
+  dplyr::select(Unit, Norm_diff)
+
+infl_indi
+
+summary(infl_indi$Norm_diff)
+ 
+```
+
+```{r}
+
+indi <- ggplot(infl_indi, aes(x = Norm_diff)) +
+  geom_histogram(color = "black", fill = "white") +
+  xlim(0, .6) +
+  xlab("Normalized Difference") +
+  ggtitle("Independent\n Individuals") +
+  theme(axis.text=element_text(size=6), axis.title=element_text(size=7), plot.title = element_text(size=8)) 
+
+indi
+
+```
+
+
+Compare individual influence to most, int, and least influential team member ideas
+
+
+```{r}
+
+wilcox.test(infl_team_sort_wide$Least, infl_indi$Norm_diff)
+
+boxplot(infl_team_sort_wide$Least, infl_indi$Norm_diff, names = c("Least Influential Team Members", "Independent Individuals"))
+
+rbind(data.frame(Type = "Team", Influence = infl_team_sort_wide$Least), data.frame(Type = "Individual", Influence = infl_indi$Norm_diff)) %>% wilcox_effsize(Influence ~ Type)
+
+
+wilcox.test(infl_team_sort_wide$Intermediate, infl_indi$Norm_diff)
+
+boxplot(infl_team_sort_wide$Intermediate, infl_indi$Norm_diff, names = c("Intermediate Influential Team Members", "Independent Individuals"))
+
+rbind(data.frame(Type = "Team", Influence = infl_team_sort_wide$Intermediate), data.frame(Type = "Individual", Influence = infl_indi$Norm_diff)) %>% wilcox_effsize(Influence ~ Type)
+
+
+
+wilcox.test(infl_team_sort_wide$Most, infl_indi$Norm_diff)
+
+boxplot(infl_team_sort_wide$Most, infl_indi$Norm_diff, names = c("Most Influential Team Members", "Independent Individuals"))
+
+rbind(data.frame(Type = "Team", Influence = infl_team_sort_wide$Most), data.frame(Type = "Individual", Influence = infl_indi$Norm_diff)) %>% wilcox_effsize(Influence ~ Type)
+
+```
+
+
+Bring in Permutated Team Data
+
+
+```{r}
+
+rand_infl_team  <- fread(**Add filepath for Rand_team_influence_data.txt**)
+
+rand_infl_team_sort <- arrange(rand_infl_team, rep, Unit, desc(Norm_diff)) %>%
+  group_by(Unit, rep) %>%
+  mutate(id = c("a","b","c")) %>%
+  dplyr::select(rep, Unit, id, Norm_diff) %>%
+  ungroup() 
+
+rand_infl_team_sort_wide <- spread(rand_infl_team_sort, id, Norm_diff)  %>%
+  dplyr::select(rep, Unit, a, b, c)  %>%
+  dplyr::rename(Least = a, Intermediate = b, Most = c)
+
+rand_infl_team_sort_wide
+
+
+```
+
+
+Comparing Observed and Random Influence (Teams)
+
+```{r}
+
+head(rand_infl_team_sort_wide)
+
+rand_team_medians <- group_by(rand_infl_team_sort_wide, rep) %>%
+  summarize(median_least = median(Least), median_int = median(Intermediate), median_most = median(Most))
+
+rand_team_medians
+
+a <- dplyr::select(rand_team_medians, rep, median_least) %>%
+  dplyr::rename(median = median_least) %>%
+  mutate(cat = "Least")
+
+b <- dplyr::select(rand_team_medians, rep, median_int) %>%
+  dplyr::rename(median = median_int) %>%
+  mutate(cat = "Intermediate")
+
+c <- dplyr::select(rand_team_medians, rep, median_most) %>%
+  dplyr::rename(median = median_most) %>%
+  mutate(cat = "Most")
+
+rand_all <- rbind(a, b, c)
+
+rand_all
+
+#Create dataframe that includes observed median values for each team member influence category as well as the 95% confidence interval for randomized values
+
+all_dat_teams <- data.frame(cat = c("Least", "Intermediate", "Most"), observed = c(median(infl_team_sort_wide$Least), median(infl_team_sort_wide$Intermediate), median(infl_team_sort_wide$Most)), min = c(as.numeric(quantile(rand_team_medians$median_least, probs = c(0.008333))), as.numeric(quantile(rand_team_medians$median_int, probs = c(0.008333))), as.numeric(quantile(rand_team_medians$median_most, probs = c(0.008333)))), max = c(as.numeric(quantile(rand_team_medians$median_least, probs = c(0.991666))), as.numeric(quantile(rand_team_medians$median_int, probs = c(0.991666))), as.numeric(quantile(rand_team_medians$median_most, probs = c(0.991666))))) 
+
+all_dat_teams$cat <- factor(all_dat_teams$cat, levels = c("Most", "Intermediate", "Least"))
+
+all_dat_teams
+
+a_graph <- ggplot(all_dat_teams, aes(x = cat, y = observed)) +
+  geom_point(size = .4) +
+  geom_errorbar(aes(ymin = min, ymax = max), width = .5, linewidth = .4) +
+  xlab("Within-team Influence Rank") +
+  ylab("Normalized Difference \n (lower = more influence)") +
+  ylim(c(0,.38)) +
+  theme(text = element_text(size = 8), axis.text=element_text(size=8), axis.title=element_text(size=8)) +
+  annotate("text", x = 1, y = .36, label = "***") +
+  annotate("text", x = 2, y = .36, label = "***") +
+  annotate("text", x = 3, y = .36, label = "NS", size = 3)
+
+a_graph
+
+
+```
+
+P-values: Comparing Observed and Random Influence (Teams)
+
+```{r}
+
+#Most influence
+
+if (nrow(filter(c, median > median(infl_team_sort_wide$Most))) < 500 ) {
+  
+  
+  pvalue <- (((nrow(filter(c, median > median(infl_team_sort_wide$Most)))) / 1000) * 2)
+            
+  pvalue
+  
+} else {
+  
+  
+   pvalue = (((1 - nrow(filter(c, median > median(infl_team_sort_wide$Most))) / 1000)) * 2)
+             
+   print(pvalue)
+  
+}
+
+#Intermediate influence
+
+if (nrow(filter(b, median > median(infl_team_sort_wide$Intermediate))) < 500 ) {
+  
+  
+  pvalue <- (((nrow(filter(b, median > median(infl_team_sort_wide$Intermediate)))) / 1000) * 2)
+            
+  pvalue
+  
+} else {
+  
+  
+   pvalue = (((1 - nrow(filter(b, median > median(infl_team_sort_wide$Intermediate))) / 1000)) * 2)
+             
+   print(pvalue)
+  
+}
+
+#Least influential
+
+if (nrow(filter(a, median > median(infl_team_sort_wide$Least))) < 500 ) {
+  
+  
+  pvalue <- (((nrow(filter(a, median > median(infl_team_sort_wide$Least)))) / 1000) * 2)
+            
+  pvalue
+  
+} else {
+  
+  
+   pvalue = (((1 - nrow(filter(a, median > median(infl_team_sort_wide$Least))) / 1000)) * 2)
+             
+   print(pvalue)
+  
+}
+
+
+```
+
+
+Comparing Observed and Random (Individual)
+
+```{r}
+
+rand_infl_indi <- fread(**Add filepath for Rand_indi_influence_data.txt**)
+
+rand_infl_indi
+
+median_rand_infl_indi <- group_by(rand_infl_indi, Rep) %>%
+  summarize(median = median(Norm_diff))
+
+#Create dataframe that includes observed median values for each individual as well as the 95% confidence interval for randomized values
+
+all_dat_indi <- data.frame(cat = "individual", observed = median(infl_indi$Norm_diff), min = as.numeric(quantile(median_rand_infl_indi$median, probs = c(0.025))), max = as.numeric(quantile(median_rand_infl_indi$median, probs = c(0.975)))) 
+
+b_graph <- ggplot(all_dat_indi, aes(x = cat, y = observed)) +
+  geom_point(size = .4) +
+  geom_errorbar(aes(ymin = min, ymax = max), width = .2, linewidth = .4) +
+  xlab("") +
+  ylab("Normalized Difference \n (lower = more influence)") +
+  ylim(c(0,.38)) +
+  theme(text = element_text(size = 8), axis.text=element_text(size=8), axis.title=element_text(size=8)) +
+  annotate("text", x = 1, y = .36, label = "***") 
+
+b_graph
+
+```
+
+P-values: Comparing Observed and Random (Individual)
+
+```{r}
+
+
+if (nrow(filter(median_rand_infl_indi, median > median(infl_indi$Norm_diff))) < 500 ) {
+  
+  
+  pvalue <- (((nrow(filter(median_rand_infl_indi, median > median(infl_indi$Norm_diff)))) / 1000) * 2)
+            
+  pvalue
+  
+} else {
+  
+  
+   pvalue = (((1 - nrow(filter(median_rand_infl_indi, median > median(infl_indi$Norm_diff))) / 1000)) * 2)
+             
+   print(pvalue)
+  
+}
+
+
+```
+
+Print graphs
+
+```{r}
+
+cowplot::plot_grid(a_graph, b_graph, labels = c("a)", "b)"), nrow = 1, ncol = 2, label_size = 6)
+
+```
+
+
+
+
